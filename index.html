@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dois Jogadores com Obstáculos</title>
+<style>
+  body {
+    margin: 0;
+    overflow: hidden;
+    background: #222;
+    font-family: Arial, sans-serif;
+    color: white;
+  }
+  #gameArea {
+    position: relative;
+    width: 600px;
+    height: 400px;
+    margin: 20px auto;
+    background: #444;
+    border: 2px solid #fff;
+  }
+  .player {
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+  }
+  #player1 {
+    background: #00f;
+    top: 50px;
+    left: 50px;
+  }
+  #player2 {
+    background: #f00;
+    top: 300px;
+    left: 500px;
+  }
+  #star {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    background: yellow;
+    border-radius: 50%;
+  }
+  .obstacle {
+    position: absolute;
+    background: #888;
+    width: 60px;
+    height: 60px;
+  }
+  #scoreBoard {
+    width: 600px;
+    margin: 0 auto;
+    margin-top: 10px;
+    font-size: 18px;
+    display: flex;
+    justify-content: space-between;
+  }
+</style>
+</head>
+<body>
+
+<div id="gameArea">
+  <div id="player1" class="player"></div>
+  <div id="player2" class="player"></div>
+  <div id="star"></div>
+
+  <!-- Obstáculos -->
+  <div class="obstacle" style="top: 100px; left: 150px;"></div>
+  <div class="obstacle" style="top: 200px; left: 300px;"></div>
+  <div class="obstacle" style="top: 50px; left: 400px;"></div>
+  <div class="obstacle" style="top: 250px; left: 100px;"></div>
+</div>
+
+<div id="scoreBoard">
+  <div>Jogador 1 (WASD): <span id="score1">0</span></div>
+  <div>Jogador 2 (Setas): <span id="score2">0</span></div>
+</div>
+
+<script>
+  const gameArea = document.getElementById('gameArea');
+  const player1 = document.getElementById('player1');
+  const player2 = document.getElementById('player2');
+  const star = document.getElementById('star');
+  const score1El = document.getElementById('score1');
+  const score2El = document.getElementById('score2');
+  const obstacles = document.querySelectorAll('.obstacle');
+
+  const gameWidth = gameArea.clientWidth;
+  const gameHeight = gameArea.clientHeight;
+
+  const starSize = 20;
+  const step = 10;
+
+  const players = {
+    player1: { el: player1, x: 50, y: 50, score: 0 },
+    player2: { el: player2, x: 500, y: 300, score: 0 }
+  };
+
+  function setPosition(player) {
+    player.el.style.left = player.x + 'px';
+    player.el.style.top = player.y + 'px';
+  }
+
+  function placeStarRandom() {
+    let valid = false;
+    let x, y;
+    while (!valid) {
+      x = Math.floor(Math.random() * (gameWidth - starSize));
+      y = Math.floor(Math.random() * (gameHeight - starSize));
+      valid = true;
+
+      obstacles.forEach(ob => {
+        const rect = ob.getBoundingClientRect();
+        const oX = ob.offsetLeft;
+        const oY = ob.offsetTop;
+        const oW = ob.offsetWidth;
+        const oH = ob.offsetHeight;
+        if (!(x + starSize < oX || x > oX + oW || y + starSize < oY || y > oY + oH)) {
+          valid = false;
+        }
+      });
+    }
+    star.style.left = x + 'px';
+    star.style.top = y + 'px';
+    starPos = { x, y };
+  }
+
+  function checkCollision(player) {
+    const p = player;
+    return !(
+      p.x + p.el.offsetWidth < starPos.x ||
+      p.x > starPos.x + starSize ||
+      p.y + p.el.offsetHeight < starPos.y ||
+      p.y > starPos.y + starSize
+    );
+  }
+
+  function updateScore(playerKey) {
+    players[playerKey].score++;
+    if (playerKey === 'player1') {
+      score1El.textContent = players[playerKey].score;
+    } else {
+      score2El.textContent = players[playerKey].score;
+    }
+  }
+
+  function checkObstacleCollision(newX, newY, elWidth, elHeight) {
+    for (let ob of obstacles) {
+      const oX = ob.offsetLeft;
+      const oY = ob.offsetTop;
+      const oW = ob.offsetWidth;
+      const oH = ob.offsetHeight;
+      if (
+        newX + elWidth > oX &&
+        newX < oX + oW &&
+        newY + elHeight > oY &&
+        newY < oY + oH
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  placeStarRandom();
+  setPosition(players.player1);
+  setPosition(players.player2);
+
+  window.addEventListener('keydown', (e) => {
+    let moved = false;
+    let dx = 0, dy = 0;
+    let currentPlayer = null;
+
+    switch(e.key) {
+      case 'w': case 'W': dy = -step; currentPlayer = players.player1; break;
+      case 'a': case 'A': dx = -step; currentPlayer = players.player1; break;
+      case 's': case 'S': dy = step; currentPlayer = players.player1; break;
+      case 'd': case 'D': dx = step; currentPlayer = players.player1; break;
+      case 'ArrowUp': dy = -step; currentPlayer = players.player2; break;
+      case 'ArrowLeft': dx = -step; currentPlayer = players.player2; break;
+      case 'ArrowDown': dy = step; currentPlayer = players.player2; break;
+      case 'ArrowRight': dx = step; currentPlayer = players.player2; break;
+    }
+
+    if (currentPlayer) {
+      e.preventDefault();
+      const newX = Math.max(0, Math.min(gameWidth - currentPlayer.el.offsetWidth, currentPlayer.x + dx));
+      const newY = Math.max(0, Math.min(gameHeight - currentPlayer.el.offsetHeight, currentPlayer.y + dy));
+
+      if (!checkObstacleCollision(newX, newY, currentPlayer.el.offsetWidth, currentPlayer.el.offsetHeight)) {
+        currentPlayer.x = newX;
+        currentPlayer.y = newY;
+        setPosition(currentPlayer);
+        moved = true;
+
+        if (checkCollision(currentPlayer)) {
+          updateScore(currentPlayer === players.player1 ? 'player1' : 'player2');
+          placeStarRandom();
+        }
+      }
+    }
+  });
+</script>
+
+</body>
+</html>
